@@ -3,28 +3,24 @@
 #include <util/delay.h>
 #include <stdlib.h>
 
-
-void ACD_init()
+void ADC_Init()
 {
-	DDRA=0x0;			/* Make ADC port as input */
-	ADCSRA = 0x87;			/* Enable ADC, fr/128  */
-	ADMUX = 0x40;			/* Vref: Avcc, ADC channel: 0 */
-	
+	DDRA = 0x00;		/* Make ADC port as input */
+	ADCSRA = 0x87;		/* Enable ADC, fr/128  */
+	ADMUX = 0x40;		/* Vref: Avcc, ADC channel: 0 */
 }
 
 int ADC_Read(char channel)
 {
-	int Ain,AinLow;
+	int ADC_value;
 	
-	ADMUX=ADMUX|(channel & 0x0f);	/* Set input channel to read */
+	ADMUX = (0x40) | (channel & 0x07);/* set input channel to read */
+	ADCSRA |= (1<<ADSC);	/* start conversion */
+	while((ADCSRA &(1<<ADIF))== 0);	/* monitor end of conversion interrupt flag */
+	
+	ADCSRA |= (1<<ADIF);	/* clear interrupt flag */
+	ADC_value = (int)ADCL;	/* read lower byte */
+	ADC_value = ADC_value + (int)ADCH*256;/* read higher 2 bits, Multiply with weightage */
 
-	ADCSRA |= (1<<ADSC);		/* Start conversion */
-	while((ADCSRA&(1<<ADIF))==0);	/* Monitor end of conversion interrupt */
-	
-	_delay_us(10);
-	AinLow = (int)ADCL;		/* Read lower byte*/
-	Ain = (int)ADCH*256;		/* Read higher 2 bits and 
-					Multiply with weight */
-	Ain = Ain + AinLow;				
-	return(Ain);			/* Return digital value*/
+	return ADC_value;		/* return digital value */
 }
