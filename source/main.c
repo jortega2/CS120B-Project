@@ -18,8 +18,9 @@
 
 int main(void) {
 	DDRB = 0xFF; PORTB = 0x00;
-	int x, y, xy;
-	unsigned char swi, up, down, left, right = 0;
+	DDRD = 0xFF; PORTD = 0x00;
+	int x, y, xy, t;
+	unsigned char center, up, down, left, right = 0;
 	ADC_Init();
 	
     while (1) {
@@ -28,22 +29,28 @@ int main(void) {
 		y = ADC_Read(1);/* Read the status on Y-OUT pin using channel 0 */
 
 		xy = ADC_Read(2);/* Read the status on SWITCH pin using channel 0 */
-		
-		if (x-y == 0){
+			
+		if ((x> 400 && x < 600)&&(y > 400 && y < 600)){
+			center = 1;
+			down = left = right = up = 0;
+		}else {
+			center  = 0;
+		}/* else if (){
 			up = 1;
-			down = left = 0;
-		} else if (x-y >= 700){
+			down = center  = left = right = 0;
+		} else if (){
 			down = 1;
-			up = left = 0;
-		} else if (x-y <=-700){
+			center = up = left = right = 0;
+		} else if () {
 			left = 1;
-			down = up = 0;
-		} 
-		if(y < 600)
-			swi = 1;	
-		else
-			swi = 0;
-		PORTB = swi | up << 1 | down << 2 | left << 3;	
+			center = up = down = right = 0;
+		} else if (){
+			right = 1;
+			center = up = down = left = 0;
+		}*/
+
+		PORTD = up;
+		PORTB = center;
 	}
     return 1;
 }
