@@ -33,18 +33,16 @@ int main(void) {
 		if ((x> 400 && x < 600)&&(y > 400 && y < 600)){
 			center = 1;
 			down = left = right = up = 0;
-		}else {
-			center  = 0;
-		}/* else if (){
+		} else if ((y > 900) && (x > 400 && x < 600)){
 			up = 1;
 			down = center  = left = right = 0;
-		} else if (){
+		} else if ((y < 100) && (x > 400 && x < 600)){
 			down = 1;
 			center = up = left = right = 0;
-		} else if () {
+		} else if (x < 100 && (y > 400 && y < 600) {
 			left = 1;
 			center = up = down = right = 0;
-		} else if (){
+		} else if ((x > 900) && (y > 400 && y < 600)){
 			right = 1;
 			center = up = down = left = 0;
 		}*/
