@@ -18,8 +18,39 @@
 #include "N5110.h"
 #include "SPI_Master_H_file.h"
 #include <avr/interrupt.h>
-
 #endif
+
+volatile unsigned char TimerFlag = 0;
+
+unsigned long _avr_timer_M = 1; // Start count from here, down to 0. Default 1 ms. 
+unsigned long _avr_timer_cntcurr = 0; // Current internal count of 1ms ticks 
+unsigned char threeLEDs;
+unsigned char blinkingLED;
+unsigned char speaker;
+
+void TimerOn(){
+
+TCCR1B = 0x0B;
+
+OCR1A = 125; 
+
+TIMSK1 = 0x02;
+
+TCNT1 = 0;
+
+_avr_timer_cntcurr = _avr_timer_M;
+
+SREG |= 0x80;
+}
+
+void TimerOff(){
+	TCCR1B = 0x00; // bit3bit1bit0: timer off
+
+}
+
+void TimerISR(){
+	TimerFlag = 1;
+}
 
 void N5110_Cmnd(char DATA)
 {
@@ -98,18 +129,34 @@ void N5110_image(const unsigned char *image_data)  /* clear the Display */
 	SPI_SS_Disable();
 }
 
+void writeCenter(){
+	N5110_Data("center");
+}
+void writeLeft(){
+	N5110_Data("left");
+}
+void writeRight(){
+	N5110_Data("right");
+}
+void writeDown(){
+	N5110_Data("down");
+}
+void writeUp(){
+	N5110_Data("up");
+}
+
+
 int main(void) {
 	DDRB = 0xFF; PORTB = 0x00;
 	DDRD = 0xFF; PORTD = 0x00;
 	int x, y;
 	unsigned char center, up, down, left, right;
-	up = down = left = right = 0;
+	center = up = down = left = right = 0;
 	ADC_Init();
 	SPI_Init();
 	N5110_init();
 	N5110_clear();
 	lcd_setXY(0x40, 0x80);
-	N5110_Data("left");
     while (1) {
 		
 		x = ADC_Read(0);/* Read the status on X-OUT pin using channel 0 */
@@ -118,18 +165,23 @@ int main(void) {
 
 			
 		if ((x> 400 && x < 600)&&(y > 400 && y < 600)){
+			writeCenter();
 			center = 0x10;
 			down = left = right = up = 0;
 		} else if ((y > 900) && (x > 400 && x < 600)){
+			writeUp();
 			up = 0x01;
 			down = center  = left = right = 0;
 		} else if ((y < 100) && (x > 400 && x < 600)){
+			writeDown();
 			down = 0x08;
 			center = up = left = right = 0;
 		} else if ((x < 100) && (y > 400 && y < 600)) {
+			writeLeft();
 			left = 0x04;
 			center = up = down = right = 0;
 		} else if ((x > 900) && (y > 400 && y < 600)){
+			writeRight();
 			right  = 0x02;
 			center = up = down = left = 0;
 		}
