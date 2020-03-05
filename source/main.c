@@ -19,7 +19,7 @@
 #include "SPI_Master_H_file.h"
 #include <avr/interrupt.h>
 #endif
-
+int x, y;
 volatile unsigned char TimerFlag = 0;
 
 unsigned long _avr_timer_M = 1; // Start count from here, down to 0. Default 1 ms. 
@@ -50,6 +50,20 @@ void TimerOff(){
 
 void TimerISR(){
 	TimerFlag = 1;
+}
+
+ISR(TIMER1_COMPA_vect){
+	_avr_timer_cntcurr--;
+	if(_avr_timer_cntcurr == 0){
+		TimerISR();
+		_avr_timer_cntcurr = _avr_timer_M;
+	
+	}
+}
+
+void TimerSet(unsigned long M){
+	_avr_timer_M = M;
+	_avr_timer_cntcurr = _avr_timer_M;
 }
 
 void N5110_Cmnd(char DATA)
@@ -129,64 +143,95 @@ void N5110_image(const unsigned char *image_data)  /* clear the Display */
 	SPI_SS_Disable();
 }
 
-void writeCenter(){
-	N5110_Data("center");
-}
-void writeLeft(){
-	N5110_Data("left");
-}
-void writeRight(){
-	N5110_Data("right");
-}
-void writeDown(){
-	N5110_Data("down");
-}
-void writeUp(){
-	N5110_Data("up");
+enum screens {s_init, wait, center, up, left, right, down} state;
+void TickFct_screen(){
+		switch (state){
+			case s_init:
+				state = wait;	
+				break;
+			case wait:	
+
+				if ((x> 400 && x < 600)&&(y > 400 && y < 600)){
+					state = wait;
+				} else if ((y > 900) && (x > 400 && x < 600)){
+					state = up;
+				} else if ((y < 100) && (x > 400 && x < 600)){
+					state = down;
+				} else if ((x < 100) && (y > 400 && y < 600)) {
+					state = right;
+				} else if ((x > 900) && (y > 400 && y < 600)){
+					state = left;
+				}
+				break;
+			case up:
+				N5110_clear();
+				lcd_setXY(0x40, 0x80);
+				N5110_Data("up");
+				state = wait;
+				break;
+			case down:
+                                N5110_clear();
+				lcd_setXY(0x40, 0x80);
+                                N5110_Data("down");
+				state = wait;
+                                break;
+			case left:
+                                N5110_clear();
+				lcd_setXY(0x40, 0x80);
+                                N5110_Data("left");
+				state = wait;
+                                break;
+			case right:
+                                N5110_clear();
+				lcd_setXY(0x40, 0x80);
+                                N5110_Data("right");
+				state = wait;
+                                break;
+			default:
+				break;
+		}
 }
 
+enum joystick_states {j_init, j_main} js_state;
+
+void TickFct_joystick(){
+	switch (js_state){
+		case j_init:
+			x = 0;
+			y = 0;
+			js_state = j_main;
+			break;
+		case j_main:
+			x = ADC_Read(0);/* Read the status on X-OUT pin using channel 0 */
+			y = ADC_Read(1);/* Read the status on Y-OUT pin using channel 0 */
+			js_state = js_state;
+			break;
+		default:
+			break;
+	}
+}
 
 int main(void) {
 	DDRB = 0xFF; PORTB = 0x00;
 	DDRD = 0xFF; PORTD = 0x00;
-	int x, y;
-	unsigned char center, up, down, left, right;
-	center = up = down = left = right = 0;
 	ADC_Init();
 	SPI_Init();
 	N5110_init();
 	N5110_clear();
 	lcd_setXY(0x40, 0x80);
+	unsigned long N_elapsedTime = 100;
+	TimerSet(1);
+	TimerOn();
     while (1) {
-		
-		x = ADC_Read(0);/* Read the status on X-OUT pin using channel 0 */
-		
-		y = ADC_Read(1);/* Read the status on Y-OUT pin using channel 0 */
-
-			
-		if ((x> 400 && x < 600)&&(y > 400 && y < 600)){
-			writeCenter();
-			center = 0x10;
-			down = left = right = up = 0;
-		} else if ((y > 900) && (x > 400 && x < 600)){
-			writeUp();
-			up = 0x01;
-			down = center  = left = right = 0;
-		} else if ((y < 100) && (x > 400 && x < 600)){
-			writeDown();
-			down = 0x08;
-			center = up = left = right = 0;
-		} else if ((x < 100) && (y > 400 && y < 600)) {
-			writeLeft();
-			left = 0x04;
-			center = up = down = right = 0;
-		} else if ((x > 900) && (y > 400 && y < 600)){
-			writeRight();
-			right  = 0x02;
-			center = up = down = left = 0;
+		TickFct_joystick();
+		if (N_elapsedTime == 100){
+			TickFct_screen();
+			N_elapsedTime = 0;
 		}
-
-		PORTD = up | right  | left | down | center;
+		while (!TimerFlag){}
+		TimerFlag = 0;
+		N_elapsedTime += 1;
+		
 	}
     return 1;
 }
