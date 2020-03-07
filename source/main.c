@@ -43,7 +43,6 @@ SREG |= 0x80;
 
 void TimerOff(){
 	TCCR1B = 0x00; // bit3bit1bit0: timer off
-
 }
 
 void TimerISR(){
@@ -145,14 +144,16 @@ enum screens {s_init, off, wait, play, gameOver} state;
 void TickFct_screen(){
 		switch (state){
 			case s_init:
-				state = wait;
-				symbol = 0;	
+				state = off;
+				symbol = 5;	
 				cnt = 0;
 				score = 0;
+				N5110_Data("off");
 				break;
-			case off:	
-				if ((~PINC & 0x01) == 1){
-					state = play;
+			case off:
+				PORTD = 0x01;	
+				if ((~PINA & 0x08) == 0x08){
+					PORTD = 0x02;
 					symbol = cnt%4;
 					if (symbol == 0){
 						N5110_clear();
@@ -172,13 +173,16 @@ void TickFct_screen(){
                                                 N5110_Data("down");
                                         }
 					cnt = 0;
+					state = play;
 				} else {
 					cnt++;
-					state = play;
+					state = off;
 				}	
 				break;
 			case wait:
+				PORTD = 0x02;
 				cnt++;
+				N5110_clear();
 				if (cnt > 50){
 					cnt = 0;
 					state = play;
@@ -187,36 +191,13 @@ void TickFct_screen(){
 				}
 				break;
 			case play:
+				PORTD = 0x04;
 				cnt++;
-				if (cnt >= 600){
+				lcd_setXY(0x40, 0x80);
+				N5110_Data(cnt);
+				if (cnt >= 200){
+					PORTD = 0xFF;
 					state = gameOver;
-				}
-				else if ((x> 400 && x < 600)&&(y > 400 && y < 600)){
-					if (symbol == 0){
-						symbol = cnt%4;
-						cnt = 0;
-						score++;
-						if (symbol == 0){
-							N5110_clear();
-							lcd_setXY(0x40, 0x80);
-							N5110_Data("up");
-						} else if (symbol == 1){
-							N5110_clear();
-							lcd_setXY(0x40, 0x80);
-							N5110_Data("left");
-						} else if (symbol == 2){
-							N5110_clear();
-							lcd_setXY(0x40, 0x80);
-							N5110_Data("right");
-						} else if (symbol == 3){
-							N5110_clear();
-							lcd_setXY(0x40, 0x80);
-							N5110_Data("down");
-						}
-						state = wait;
-					} else {
-						state = gameOver;
-					}
 				} else if ((y > 900) && (x > 400 && x < 600)){
 					if (symbol == 0){
                                                 symbol = cnt%4;
@@ -324,12 +305,13 @@ void TickFct_screen(){
 				}
 				break;
 			case gameOver:
+				//PORTD = 0x08;
 				N5110_clear();
 				lcd_setXY(0x40, 0x80);
 				N5110_Data("gameOver");
 				lcd_setXY(0x80, 0x80);
 				N5110_Data(score);
-				state = wait;
+				state = off;
 				break;
 			default:
 				break;
@@ -358,24 +340,25 @@ void TickFct_joystick(){
 int main(void) {
 	DDRB = 0xFF; PORTB = 0x00;
 	DDRD = 0xFF; PORTD = 0x00;
-	
+	state = s_init;
+	js_state = j_init;
 	ADC_Init();
 	SPI_Init();
 	N5110_init();
 	N5110_clear();
 	lcd_setXY(0x40, 0x80);
-	unsigned long N_elapsedTime = 100;
+	//unsigned long N_elapsedTime = 100;
 	TimerSet(1);
 	TimerOn();
     while (1) {
 		TickFct_joystick();
-		if (N_elapsedTime == 100){
+		//if (N_elapsedTime == 100){
 			TickFct_screen();
-			N_elapsedTime = 0;
-		}
+			//N_elapsedTime = 0;
+		//}
 		while (!TimerFlag){}
 		TimerFlag = 0;
-		N_elapsedTime += 1;
+		//N_elapsedTime += 1;
 		
 	}
     return 1;
