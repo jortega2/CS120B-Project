@@ -141,7 +141,7 @@ void N5110_image(const unsigned char *image_data)  /* clear the Display */
 	SPI_SS_Disable();
 }
 
-enum screens {s_init, wait, play, gameOver} state;
+enum screens {s_init, off, wait, play, gameOver} state;
 void TickFct_screen(){
 		switch (state){
 			case s_init:
@@ -150,7 +150,7 @@ void TickFct_screen(){
 				cnt = 0;
 				score = 0;
 				break;
-			case wait:	
+			case off:	
 				if ((~PINC & 0x01) == 1){
 					state = play;
 					symbol = cnt%4;
@@ -174,8 +174,17 @@ void TickFct_screen(){
 					cnt = 0;
 				} else {
 					cnt++;
-					state = wait;
+					state = play;
 				}	
+				break;
+			case wait:
+				cnt++;
+				if (cnt > 50){
+					cnt = 0;
+					state = play;
+				} else {
+					state = wait;
+				}
 				break;
 			case play:
 				cnt++;
@@ -204,6 +213,7 @@ void TickFct_screen(){
 							lcd_setXY(0x40, 0x80);
 							N5110_Data("down");
 						}
+						state = wait;
 					} else {
 						state = gameOver;
 					}
@@ -229,6 +239,7 @@ void TickFct_screen(){
                                                         lcd_setXY(0x40, 0x80);
                                                         N5110_Data("down");
                                                 }
+						state = wait;
                                         } else {
                                                 state = gameOver;
                                         }
@@ -254,6 +265,7 @@ void TickFct_screen(){
                                                         lcd_setXY(0x40, 0x80);
                                                         N5110_Data("down");
                                                 }
+						state = wait;
                                         } else {
                                                 state = gameOver;
                                         }
@@ -279,6 +291,7 @@ void TickFct_screen(){
                                                         lcd_setXY(0x40, 0x80);
                                                         N5110_Data("down");
                                                 }
+						state = wait;
                                         } else {
                                                 state = gameOver;
                                         }
@@ -304,6 +317,7 @@ void TickFct_screen(){
                                                         lcd_setXY(0x40, 0x80);
                                                         N5110_Data("down");
                                                 }
+						state = wait;
                                         } else {
                                                 state = gameOver;
                                         }
