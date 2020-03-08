@@ -16,14 +16,17 @@
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #include "N5110.h"
-#include "SPI_Master_H_file.h"
 #include <avr/interrupt.h>
+#include "images.h"
 #endif
 volatile unsigned char TimerFlag = 0;
 
 unsigned long _avr_timer_M = 1; // Start count from here, down to 0. Default 1 ms. 
 unsigned long _avr_timer_cntcurr = 0; // Current internal count of 1ms ticks 
-unsigned char cnt, symbol, score;
+unsigned char score;
+char buffer[5];
+short cnt, symbol;
+
 int x, y;
 
 void TimerOn(){
@@ -63,165 +66,101 @@ void TimerSet(unsigned long M){
 	_avr_timer_cntcurr = _avr_timer_M;
 }
 
-void N5110_Cmnd(char DATA)
-{
-	PORTB &= ~(1<<DC);  /* make DC pin to logic zero for command operation */
-	SPI_SS_Enable();  /* enable SS pin to slave selection */	
-	SPI_Write(DATA);  /* send data on data register */
-	PORTB |= (1<<DC);  /* make DC pin to logic high for data operation */
-	SPI_SS_Disable();
-}
+enum screens {s_init, off, wait, countdown,  play, gameOver, gameOverWait} state;
 
-void N5110_Data(char *DATA)
-{
-	PORTB |= (1<<DC);  /* make DC pin to logic high for data operation */
-	SPI_SS_Enable();  /* enable SS pin to slave selection */
-	int lenan = strlen(DATA);  /* measure the length of data */
-	int g =0;
-	for (g=0; g<lenan; g++)
-	{
-		int index = 0;
-		for (index = 0; index<5; index++)
-		{
-			SPI_Write(ASCII[DATA[g] - 0x20][index]);  /* send the data on data register */			
-		}
-		SPI_Write(0x00);
-	}							
-	SPI_SS_Disable();									
-}
-
-void N5110_Reset()  /* reset the Display at the beginning of initialization */
-{
-	PORTB &= ~(1<<RST);
-	_delay_ms(100);
-	PORTB |= (1<<RST);
-}
-
-void N5110_init()
-{
-	N5110_Reset();  /* reset the display */
-	N5110_Cmnd(0x21);  /* command set in addition mode */
-	N5110_Cmnd(0xC0);  /* set the voltage by sending C0 means VOP = 5V */
-	N5110_Cmnd(0x07);  /* set the temp. coefficient to 3 */
-	N5110_Cmnd(0x13);  /* set value of Voltage Bias System */
-	N5110_Cmnd(0x20);  /* command set in basic mode */
-	N5110_Cmnd(0x0C);  /* display result in normal mode */
-}
-
-void lcd_setXY(char x, char y)  /* set the column and row */
-{
-	N5110_Cmnd(x);
-	N5110_Cmnd(y);
-}
-
-void N5110_clear()  /* clear the Display */
-{
-	SPI_SS_Enable();
-	PORTB |= (1<<DC);
-	int k = 0;
-	for (k=0; k<=503; k++)
-	{
-		SPI_Write(0x00);		
-	}
-	PORTB &= ~(1<<DC);
-	SPI_SS_Disable();	
-}
-
-void N5110_image(const unsigned char *image_data)  /* clear the Display */
-{
-	SPI_SS_Enable();
-	PORTB |= (1<<DC);
-	int k  = 0;
-	for (k=0; k<=503; k++)
-	{
-		SPI_Write(image_data[k]);
-	}
-	PORTB &= ~(1<<DC);
-	SPI_SS_Disable();
-}
-
-enum screens {s_init, off, wait, play, gameOver} state;
 void TickFct_screen(){
 		switch (state){
 			case s_init:
 				state = off;
-				symbol = 5;	
 				cnt = 0;
 				score = 0;
+				lcd_setXY(0x50, 0x05);
 				N5110_Data("off");
 				break;
 			case off:
 				PORTD = 0x01;	
+				cnt++;
 				if ((~PINA & 0x08) == 0x08){
-					PORTD = 0x02;
+					//PORTD = 0x02;
 					symbol = cnt%4;
-					if (symbol == 0){
-						N5110_clear();
-                                		lcd_setXY(0x40, 0x80);
-                                		N5110_Data("up");
-					} else if (symbol == 1){
-						N5110_clear();
-                                                lcd_setXY(0x40, 0x80);
-                                                N5110_Data("left");
-                                        } else if (symbol == 2){
-                                                N5110_clear();
-                                                lcd_setXY(0x40, 0x80);
-                                                N5110_Data("right");
-                                        } else if (symbol == 3){
-                                                N5110_clear();
-                                                lcd_setXY(0x40, 0x80);
-                                                N5110_Data("down");
-                                        }
 					cnt = 0;
-					state = play;
+					state = countdown;
 				} else {
-					cnt++;
 					state = off;
 				}	
 				break;
 			case wait:
-				PORTD = 0x02;
+				PORTD = 0x0F;
 				cnt++;
 				N5110_clear();
 				if (cnt > 50){
+                                        if (symbol == 0){
+                                                //N5110_clear();
+                                                lcd_setXY(0x40, 0x80);
+                                                //N5110_Data("up wait");
+						N5110_image(up);
+                                        } else if (symbol == 1){
+                                                //N5110_clear();
+                                                lcd_setXY(0x40, 0x80);
+                                                //N5110_Data("left wait");
+						N5110_image(left);
+                                        } else if (symbol == 2){
+                                                //N5110_clear();
+                                                lcd_setXY(0x40, 0x80);
+                                                //N5110_Data("right wait");
+						N5110_image(right);
+                                        } else if (symbol == 3){
+                                                //N5110_clear();
+                                                lcd_setXY(0x40, 0x80);
+                                                //N5110_Data("down wait");
+						N5110_image(down);
+                                        } else {
+						lcd_setXY(0x40, 0x80);
+						N5110_Data("defaulted...");
+					}
 					cnt = 0;
 					state = play;
 				} else {
 					state = wait;
 				}
 				break;
+			case countdown:
+				PORTD = 0x03;
+				if (cnt == 0){	
+					N5110_clear();
+					N5110_image(three);
+				} else if (cnt == 1000){
+					N5110_clear();
+					N5110_image(two);
+				} else if (cnt == 2000){
+					N5110_clear();
+					N5110_image(one);
+				}
+				if (cnt < 3000){
+					state = countdown;
+				} else {
+					cnt = 0;
+					state = wait;
+				}
+				cnt++;
+				break;
 			case play:
 				PORTD = 0x04;
-				cnt++;
+				//cnt++;
 				lcd_setXY(0x40, 0x80);
-				N5110_Data(cnt);
-				if (cnt >= 200){
-					PORTD = 0xFF;
+				//N5110_Data(cnt);
+				if (cnt >= 600){
+					//PORTD = 0xFF;
+					cnt = 0;
 					state = gameOver;
 				} else if ((y > 900) && (x > 400 && x < 600)){
 					if (symbol == 0){
                                                 symbol = cnt%4;
                                                 cnt = 0;
                                                 score++;
-                                                if (symbol == 0){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("up");
-                                                } else if (symbol == 1){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("left");
-                                                } else if (symbol == 2){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("right");
-                                                } else if (symbol == 3){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("down");
-                                                }
 						state = wait;
                                         } else {
+						symbol = cnt%4;
                                                 state = gameOver;
                                         }
 				} else if ((y < 100) && (x > 400 && x < 600)){
@@ -229,25 +168,9 @@ void TickFct_screen(){
                                                 symbol = cnt%4;
                                                 cnt = 0;
                                                 score++;
-                                                if (symbol == 0){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("up");
-                                                } else if (symbol == 1){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("left");
-                                                } else if (symbol == 2){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("right");
-                                                } else if (symbol == 3){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("down");
-                                                }
 						state = wait;
                                         } else {
+						symbol = cnt%4;
                                                 state = gameOver;
                                         }
 				} else if ((x < 100) && (y > 400 && y < 600)) {
@@ -255,25 +178,9 @@ void TickFct_screen(){
                                                 symbol = cnt%4;
                                                 cnt = 0;
                                                 score++;
-                                                if (symbol == 0){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("up");
-                                                } else if (symbol == 1){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("left");
-                                                } else if (symbol == 2){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("right");
-                                                } else if (symbol == 3){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("down");
-                                                }
 						state = wait;
                                         } else {
+						symbol = cnt%4;
                                                 state = gameOver;
                                         }
 				} else if ((x > 900) && (y > 400 && y < 600)){
@@ -281,37 +188,32 @@ void TickFct_screen(){
                                                 symbol = cnt%4;
                                                 cnt = 0;
                                                 score++;
-                                                if (symbol == 0){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("up");
-                                                } else if (symbol == 1){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("left");
-                                                } else if (symbol == 2){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("right");
-                                                } else if (symbol == 3){
-                                                        N5110_clear();
-                                                        lcd_setXY(0x40, 0x80);
-                                                        N5110_Data("down");
-                                                }
 						state = wait;
                                         } else {
+						symbol = cnt%4;
                                                 state = gameOver;
                                         }
+				} else {
+					cnt++;
+					state = play;
 				}
 				break;
 			case gameOver:
-				//PORTD = 0x08;
 				N5110_clear();
-				lcd_setXY(0x40, 0x80);
-				N5110_Data("gameOver");
-				lcd_setXY(0x80, 0x80);
-				N5110_Data(score);
-				state = off;
+				lcd_setXY(0x01, 0x05);
+				N5110_Data("gameOver      Score:");
+				sprintf(buffer, "%d", score);
+				N5110_Data(buffer);
+				N5110_Data("       Press button 1 to play again");
+				state = gameOverWait;
+				break;
+			case gameOverWait:
+				//PORTD = 0x08;
+				if ((~PINA & 0x08) == 0x08){
+					state = s_init;
+				} else { 
+					state = gameOverWait;
+				}
 				break;
 			default:
 				break;
@@ -346,7 +248,7 @@ int main(void) {
 	SPI_Init();
 	N5110_init();
 	N5110_clear();
-	lcd_setXY(0x40, 0x80);
+	lcd_setXY(0x50, 0x05);
 	//unsigned long N_elapsedTime = 100;
 	TimerSet(1);
 	TimerOn();
