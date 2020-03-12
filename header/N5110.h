@@ -1,9 +1,9 @@
 /*
  * Nokia5110_charactor_H_file.h
- *
+ * 
  * http://www.electronicwings.com
  */
-
+// File created by electronicwings: https://www.electronicwings.com/avr-atmega/nokia5110-graphical-display-interfacing-with-atmega16-32
 static const char ASCII[][5] =
 {
  {0x00, 0x00, 0x00, 0x00, 0x00} // 20 (Space) 

@@ -3,7 +3,8 @@
  *
  * http://www.electronicwings.com
  */ 
-
+//Code created by electronicwings: // File created by electronicwings: https://www.electronicwings.com/avr-atmega/nokia5110-graphical-display-interfacing-with-atmega16-32
+//Implementation file and header file was merged into one
 
 #ifndef SPI_MASTER_H_FILE_H_
 #define SPI_MASTER_H_FILE_H_

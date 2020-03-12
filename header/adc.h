@@ -1,3 +1,5 @@
+//Code was created by electronicwings: https://www.electronicwings.com/avr-atmega/analog-joystick-interface-with-atmega-16-32
+
 #define F_CPU 8000000UL 
 #include <avr/io.h>
 #include <util/delay.h>
